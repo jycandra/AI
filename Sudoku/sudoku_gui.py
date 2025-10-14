@@ -83,16 +83,24 @@ class SudokuGUI:
         heading = tk.Label(master, text="Sudoku Solver", font=('Arial', 30, 'bold'), fg="#2E86C1")
         heading.grid(row=0, column=0, columnspan=9, pady=15)
 
-        # Create 9x9 entry grid
-        self.entries = [[tk.Entry(master, width=3, font=('Arial', 18), justify='center') for j in range(9)] for i in range(9)]
-        for i in range(9):
-            for j in range(9):
-                e = self.entries[i][j]
-                e.grid(row=i + 1, column=j, padx=2, pady=2)
-                if j % 3 == 0:
-                    e.grid(padx=(5, 2))
-                if i % 3 == 0:
-                    e.grid(pady=(5, 2))
+         # Create grid container for better layout
+        grid_frame = tk.Frame(master, bg="#2E4053", bd=1, relief="solid")
+        grid_frame.grid(row=1, column=0, columnspan=9, padx=100, pady=20)
+
+        # Create 9x9 Entry boxes
+        self.entries = [[None for _ in range(9)] for _ in range(9)]
+        for block_row in range(3):
+            for block_col in range(3):
+                frame = tk.Frame(grid_frame, bg="#2E4053", relief="ridge")
+                frame.grid(row=block_row, column=block_col, padx=2, pady=2)
+                for i in range(3):
+                    for j in range(3):
+                        row = block_row * 3 + i
+                        col = block_col * 3 + j
+                        e = tk.Entry(frame, width=3, font=('Consolas', 18, 'bold'),
+                                     justify='center', relief='ridge', bg="#FDFEFE")
+                        e.grid(row=i, column=j, padx=1, pady=1)
+                        self.entries[row][col] = e
 
         # Buttons
         button_frame = tk.Frame(master)
