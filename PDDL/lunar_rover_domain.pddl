@@ -1,42 +1,37 @@
 (define (domain lunar_rover_domain)
     (:requirements :strips :typing)
 
-    ;; =============================
-    ;; TYPES
-    ;; =============================
+    
     (:types
         rover
         lander
         location
         sample
-        data           ;; represents image or scan data
     )
 
-    ;; =============================
     ;; PREDICATES
     ;; =============================
     (:predicates
         ;; --- Position and connectivity ---
-        (at ?r - rover ?l - location)                ;; Rover is at a location
-        (lander-at ?ld - lander ?l - location)       ;; Lander is fixed at a location
-        (connected ?l1 ?l2 - location)               ;; Two locations are connected
+        (at ?r - rover ?l - location)               ;; Rover is at a location
+        (lander-at ?ld - lander ?l - location)      ;; Lander is fixed at a location
+        (connected ?l1 ?l2 - location)              ;; Two locations are connected
 
-        ;; --- Ownership ---
-        (belongs-to ?r - rover ?ld - lander)         ;; Rover belongs to a lander
-        (deployed ?r - rover)                        ;; Rover has been deployed
+        ;; --- Ownership and deployment ---
+        (assigned ?r - rover ?ld - lander)          ;; Rover belongs to a lander
+        (active ?r - rover)                         ;; Rover has been deployed and is active
 
-        ;; --- Rover status ---
-        (has-sample ?r - rover)                      ;; Rover currently carrying a sample
-        (has-data ?r - rover)                        ;; Rover carrying one piece of data
-        (empty ?r - rover)                           ;; Rover has free memory (no data)
+        ;; --- Rover memory and data ---
+        (holding-data ?r - rover)                   ;; Rover currently holds data (image or scan)
+        (data-empty ?r - rover)                     ;; Rover memory is empty (no data)
 
-        ;; --- Lander storage ---
-        (lander-has-sample ?ld - lander)             ;; Lander has stored a sample
+        ;; --- Sample collection ---
+        (holding-sample ?r - rover)                 ;; Rover currently carries a sample
+        (stored ?ld - lander)                       ;; Lander has stored a sample
 
-        ;; --- Data and mission state ---
-        (image-taken ?l - location)                  ;; Image taken at this location
-        (scan-taken ?l - location)                   ;; Scan done at this location
-        (data-transmitted ?r - rover)                ;; Rover has transmitted its data
+        ;; --- Mission progress ---
+        (data-collected ?l - location)              ;; Image or scan has been taken at location
+        (data-transmitted ?r - rover)               ;; Rover has transmitted data to lander
     )
 
     ;; =============================
@@ -48,11 +43,11 @@
         :parameters (?r - rover ?ld - lander ?l - location)
         :precondition (and
             (lander-at ?ld ?l)
-            (belongs-to ?r ?ld)
-            (not (deployed ?r))
+            (assigned ?r ?ld)
+            (not (active ?r))
         )
         :effect (and
-            (deployed ?r)
+            (active ?r)
             (at ?r ?l)
         )
     )
@@ -61,7 +56,7 @@
     (:action move
         :parameters (?r - rover ?from ?to - location)
         :precondition (and
-            (deployed ?r)
+            (active ?r)
             (at ?r ?from)
             (connected ?from ?to)
         )
@@ -71,79 +66,65 @@
         )
     )
 
-    ;; --- 3. Take Image ---
-    (:action take-image
+    ;; --- 3. Take Image (or Scan) ---
+    (:action collect-data
         :parameters (?r - rover ?l - location)
         :precondition (and
-            (deployed ?r)
+            (active ?r)
             (at ?r ?l)
-            (empty ?r)
+            (data-empty ?r)
         )
         :effect (and
-            (not (empty ?r))
-            (has-data ?r)
-            (image-taken ?l)
+            (not (data-empty ?r))
+            (holding-data ?r)
+            (data-collected ?l)
         )
     )
 
-    ;; --- 4. Perform Subsurface Scan ---
-    (:action perform-scan
-        :parameters (?r - rover ?l - location)
-        :precondition (and
-            (deployed ?r)
-            (at ?r ?l)
-            (empty ?r)
-        )
-        :effect (and
-            (not (empty ?r))
-            (has-data ?r)
-            (scan-taken ?l)
-        )
-    )
-
-    ;; --- 5. Transmit Data to Lander ---
+    ;; --- 4. Transmit Data to Lander ---
     (:action transmit-data
         :parameters (?r - rover ?ld - lander ?l - location)
         :precondition (and
-            (deployed ?r)
-            (belongs-to ?r ?ld)
+            (active ?r)
+            (assigned ?r ?ld)
             (lander-at ?ld ?l)
             (at ?r ?l)
-            (has-data ?r)
+            (holding-data ?r)
         )
         :effect (and
             (data-transmitted ?r)
-            (not (has-data ?r))
-            (empty ?r)
+            (not (holding-data ?r))
+            (data-empty ?r)
         )
     )
 
-    ;; --- 6. Collect Sample ---
+    ;; --- 5. Collect Sample ---
     (:action collect-sample
         :parameters (?r - rover ?l - location ?s - sample)
         :precondition (and
-            (deployed ?r)
+            (active ?r)
             (at ?r ?l)
-            (not (has-sample ?r))
+            (not (holding-sample ?r))
         )
         :effect (and
-            (has-sample ?r)
+            (holding-sample ?r)
         )
     )
 
-    ;; --- 7. Store Sample in Lander ---
+    ;; --- 6. Store Sample in Lander ---
     (:action store-sample
         :parameters (?r - rover ?ld - lander ?l - location ?s - sample)
         :precondition (and
-            (belongs-to ?r ?ld)
+            (assigned ?r ?ld)
             (lander-at ?ld ?l)
             (at ?r ?l)
-            (has-sample ?r)
-            (not (lander-has-sample ?ld))
+            (holding-sample ?r)
+            (not (stored ?ld))
         )
         :effect (and
-            (not (has-sample ?r))
-            (lander-has-sample ?ld)
+            (not (holding-sample ?r))
+            (stored ?ld)
         )
     )
 )
+
